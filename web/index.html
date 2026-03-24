@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovelForge — AI 小说创作工坊</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">✦</span>
+                    <span class="logo-text">NovelForge</span>
+                </div>
+                <button class="btn-icon sidebar-toggle" onclick="toggleSidebar()" title="收起侧栏">◀</button>
+            </div>
+
+            <!-- Novel Selector -->
+            <div class="novel-selector" id="novelSelector">
+                <select id="novelSelect" onchange="loadNovel(this.value)">
+                    <option value="">— 选择或创建小说 —</option>
+                </select>
+                <button class="btn-icon" onclick="showCreateNovel()" title="新建小说">+</button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="sidebar-nav" id="sidebarNav" style="display:none">
+                <a href="#" class="nav-item active" data-view="dashboard" onclick="switchView('dashboard')">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">概览</span>
+                </a>
+                <a href="#" class="nav-item" data-view="outline" onclick="switchView('outline')">
+                    <span class="nav-icon">📑</span>
+                    <span class="nav-label">大纲</span>
+                </a>
+                <a href="#" class="nav-item" data-view="characters" onclick="switchView('characters')">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-label">角色</span>
+                </a>
+                <a href="#" class="nav-item" data-view="world" onclick="switchView('world')">
+                    <span class="nav-icon">🌍</span>
+                    <span class="nav-label">世界观</span>
+                </a>
+                <a href="#" class="nav-item" data-view="plots" onclick="switchView('plots')">
+                    <span class="nav-icon">🧵</span>
+                    <span class="nav-label">剧情线</span>
+                </a>
+                <a href="#" class="nav-item" data-view="writing" onclick="switchView('writing')">
+                    <span class="nav-icon">✍️</span>
+                    <span class="nav-label">写作</span>
+                </a>
+                <a href="#" class="nav-item" data-view="settings" onclick="switchView('settings')">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">设置</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="word-count-display" id="totalWordCount" style="display:none">
+                    总字数：<strong>0</strong>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content" id="mainContent">
+            <!-- Welcome Screen -->
+            <div id="welcomeScreen" class="welcome-screen">
+                <div class="welcome-inner">
+                    <div class="welcome-icon">✦</div>
+                    <h1>NovelForge</h1>
+                    <p class="welcome-subtitle">AI 小说创作工坊</p>
+                    <p class="welcome-desc">结构化管理你的小说大纲、角色、世界观与剧情线，<br>在 AI 写作时智能组装上下文，告别遗忘。</p>
+                    <button class="btn btn-primary btn-lg" onclick="showCreateNovel()">开始创作</button>
+                </div>
+            </div>
+
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view" style="display:none">
+                <div class="view-header">
+                    <h2 id="novelTitle">小说概览</h2>
+                    <div class="view-actions">
+                        <button class="btn btn-sm" onclick="editNovel()">编辑信息</button>
+                    </div>
+                </div>
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="statChapters">0</div>
+                        <div class="stat-label">章节</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statCharacters">0</div>
+                        <div class="stat-label">角色</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statPlots">0</div>
+                        <div class="stat-label">剧情线</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="statWords">0</div>
+                        <div class="stat-label">总字数</div>
+                    </div>
+                </div>
+                <div class="dashboard-section">
+                    <h3>简介</h3>
+                    <p id="novelSynopsis" class="text-muted">暂无简介</p>
+                </div>
+                <div class="dashboard-section">
+                    <h3>最近章节</h3>
+                    <div id="recentChapters" class="chapter-list"></div>
+                </div>
+            </div>
+
+            <!-- Outline View -->
+            <div id="view-outline" class="view" style="display:none">
+                <div class="view-header">
+                    <h2>大纲管理</h2>
+                    <div class="view-actions">
+                        <select id="outlineParentFilter" class="input-sm" onchange="loadOutline()">
+                            <option value="">全部</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary" onclick="showCreateOutlineNode()">+ 新节点</button>
+                    </div>
+                </div>
+                <div id="outlineTree" class="outline-tree"></div>
+            </div>
+
+            <!-- Characters View -->
+            <div id="view-characters" class="view" style="display:none">
+                <div class="view-header">
+                    <h2>角色管理</h2>
+                    <div class="view-actions">
+                        <button class="btn btn-sm btn-primary" onclick="showCreateCharacter()">+ 新角色</button>
+                    </div>
+                </div>
+                <div id="characterList" class="card-grid"></div>
+            </div>
+
+            <!-- World View -->
+            <div id="view-world" class="view" style="display:none">
+                <div class="view-header">
+                    <h2>世界观设定</h2>
+                    <div class="view-actions">
+                        <select id="worldCategoryFilter" class="input-sm" onchange="loadWorld()">
+                            <option value="">全部分类</option>
+                            <option value="location">地点</option>
+                            <option value="organization">组织</option>
+                            <option value="rule">规则</option>
+                            <option value="history">历史</option>
+                            <option value="item">物品</option>
+                            <option value="culture">文化</option>
+                            <option value="magic_system">魔法体系</option>
+                            <option value="technology">科技</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary" onclick="showCreateWorldElement()">+ 新设定</button>
+                    </div>
+                </div>
+                <div id="worldList" class="card-grid"></div>
+            </div>
+
+            <!-- Plots View -->
+            <div id="view-plots" class="view" style="display:none">
+                <div class="view-header">
+                    <h2>剧情线追踪</h2>
+                    <div class="view-actions">
+                        <select id="plotStatusFilter" class="input-sm" onchange="loadPlots()">
+                            <option value="">全部状态</option>
+                            <option value="setup">铺垫中</option>
+                            <option value="developing">发展中</option>
+                            <option value="climax">高潮</option>
+                            <option value="resolved">已解决</option>
+                            <option value="abandoned">已放弃</option>
+                        </select>
+                        <button class="btn btn-sm btn-primary" onclick="showCreatePlotThread()">+ 新剧情线</button>
+                    </div>
+                </div>
+                <div id="plotList" class="plot-list"></div>
+            </div>
+
+            <!-- Writing View -->
+            <div id="view-writing" class="view" style="display:none">
+                <div class="view-header">
+                    <h2>AI 写作</h2>
+                    <div class="view-actions">
+                        <button class="btn btn-sm" onclick="showCreateChapter()">+ 新章节</button>
+                    </div>
+                </div>
+                <div class="writing-layout">
+                    <div class="writing-main">
+                        <div class="chapter-selector">
+                            <select id="chapterSelect" class="input" onchange="loadChapter(this.value)">
+                                <option value="">— 选择章节 —</option>
+                            </select>
+                        </div>
+                        <div id="chapterEditor" class="chapter-editor" style="display:none">
+                            <input type="text" id="chapterTitle" class="chapter-title-input" placeholder="章节标题" onchange="saveChapterTitle()">
+                            <textarea id="chapterContent" class="chapter-textarea" placeholder="开始写作..." oninput="autoSaveChapter()"></textarea>
+                            <div class="editor-footer">
+                                <span id="chapterWordCount" class="word-count">0 字</span>
+                                <span id="chapterStatus" class="status-badge draft">草稿</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="writing-sidebar" id="writingSidebar">
+                        <div class="writing-sidebar-header">
+                            <h3>AI 助手</h3>
+                            <button class="btn-icon" onclick="toggleWritingSidebar()" title="收起">▶</button>
+                        </div>
+                        <div class="ai-panel">
+                            <div class="ai-section">
+                                <label>写作指令</label>
+                                <textarea id="aiPrompt" class="input" rows="3" placeholder="告诉 AI 你想写什么..."></textarea>
+                            </div>
+                            <div class="ai-section">
+                                <label>补充上下文</label>
+                                <textarea id="aiCustomContext" class="input" rows="2" placeholder="额外补充信息..."></textarea>
+                            </div>
+                            <div class="ai-section">
+                                <label>前文回顾章数</label>
+                                <input type="number" id="aiPrevChapters" class="input" value="2" min="0" max="10">
+                            </div>
+                            <div class="ai-section">
+                                <button class="btn btn-outline btn-sm" onclick="previewContext()">预览上下文</button>
+                                <button class="btn btn-primary" onclick="callAIWrite()">✨ AI 生成</button>
+                            </div>
+                            <div id="contextPreview" class="context-preview" style="display:none">
+                                <h4>上下文预览</h4>
+                                <pre id="contextPreviewContent"></pre>
+                                <div class="context-stats">
+                                    <span id="contextCharCount"></span>
+                                </div>
+                            </div>
+                            <div id="aiResult" class="ai-result" style="display:none">
+                                <h4>生成结果</h4>
+                                <div id="aiResultContent" class="ai-result-content"></div>
+                                <div class="ai-result-actions">
+                                    <button class="btn btn-sm btn-primary" onclick="acceptAIResult()">采纳</button>
+                                    <button class="btn btn-sm btn-outline" onclick="appendAIResult()">追加</button>
+                                    <button class="btn btn-sm" onclick="discardAIResult()">丢弃</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="view-settings" class="view" style="display:none">
+                <div class="view-header">
+                    <h2>AI 设置</h2>
+                </div>
+                <div class="settings-form">
+                    <div class="form-group">
+                        <label>AI 提供商</label>
+                        <select id="aiProvider" class="input">
+                            <option value="openai">OpenAI</option>
+                            <option value="custom">自定义</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>API 地址</label>
+                        <input type="text" id="aiApiUrl" class="input" placeholder="https://api.openai.com/v1/chat/completions">
+                    </div>
+                    <div class="form-group">
+                        <label>API Key</label>
+                        <input type="password" id="aiApiKey" class="input" placeholder="sk-...">
+                    </div>
+                    <div class="form-group">
+                        <label>模型</label>
+                        <input type="text" id="aiModel" class="input" placeholder="gpt-4o-mini">
+                    </div>
+                    <div class="form-group">
+                        <label>系统提示词</label>
+                        <textarea id="aiSystemPrompt" class="input" rows="5" placeholder="你是一位才华横溢的小说家..."></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>温度 (Temperature)</label>
+                            <input type="number" id="aiTemperature" class="input" step="0.1" min="0" max="2" value="0.7">
+                        </div>
+                        <div class="form-group">
+                            <label>最大 Token 数</label>
+                            <input type="number" id="aiMaxTokens" class="input" min="100" max="32000" value="4000">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>上下文策略</label>
+                        <select id="aiContextStrategy" class="input">
+                            <option value="auto">自动（智能选择相关内容）</option>
+                            <option value="manual">手动（只包含指定内容）</option>
+                            <option value="minimal">最小（仅当前章节大纲）</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveAIConfig()">保存设置</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Overlay -->
+    <div id="modalOverlay" class="modal-overlay" style="display:none" onclick="closeModal(event)">
+        <div class="modal" id="modalContent" onclick="event.stopPropagation()">
+            <!-- Dynamic content -->
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
