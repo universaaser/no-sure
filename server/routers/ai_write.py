@@ -16,12 +16,12 @@ async def ai_write(novel_id: int, data: AIWriteRequest, db: Session = Depends(ge
     if not novel:
         raise HTTPException(404, "Novel not found")
 
-    # Get AI config
     config = db.query(AIConfig).filter(AIConfig.novel_id == novel_id).first()
     if not config or not config.api_key:
         return AIWriteResponse(success=False, error="请先在设置中配置 AI API Key")
 
-    # Build context
+    context_budget = config.context_budget or 6000
+
     context = build_writing_context(
         db=db,
         novel_id=novel_id,
@@ -32,16 +32,14 @@ async def ai_write(novel_id: int, data: AIWriteRequest, db: Session = Depends(ge
         include_world_element_ids=data.include_world_elements,
         prev_chapter_count=data.prev_chapter_count,
         custom_context=data.custom_context,
+        context_budget=context_budget,
     )
 
-    # Build system prompt
     system_prompt = config.system_prompt or "你是一位才华横溢的小说家，擅长创作引人入胜的故事。请根据提供的大纲和上下文信息，撰写小说章节内容。保持风格一致，人物性格鲜明，情节连贯。"
     system_prompt += f"\n\n{context}"
 
-    # Build user prompt
     user_prompt = data.prompt or "请根据以上大纲和上下文，撰写这一章节的内容。"
 
-    # Call AI API
     try:
         async with httpx.AsyncClient(timeout=120.0) as client:
             response = await client.post(
@@ -65,19 +63,30 @@ async def ai_write(novel_id: int, data: AIWriteRequest, db: Session = Depends(ge
 
         content = result["choices"][0]["message"]["content"]
 
-        # If chapter_id provided, save the content
         if data.chapter_id:
             chapter = db.query(Chapter).filter(Chapter.id == data.chapter_id, Chapter.novel_id == novel_id).first()
             if chapter:
+                # Auto-save version before AI overwrites
+                from ..models import ChapterVersion
+                last_ver = db.query(ChapterVersion).filter(
+                    ChapterVersion.chapter_id == chapter.id
+                ).order_by(ChapterVersion.version_number.desc()).first()
+                next_num = (last_ver.version_number + 1) if last_ver else 1
+                snapshot = ChapterVersion(
+                    chapter_id=chapter.id,
+                    content=chapter.content,
+                    word_count=chapter.word_count,
+                    version_number=next_num,
+                    change_summary="AI 生成前自动备份",
+                )
+                db.add(snapshot)
+
                 chapter.content = content
                 chapter.word_count = count_words(content)
+                chapter.version = next_num
                 db.commit()
 
-        return AIWriteResponse(
-            success=True,
-            content=content,
-            context_used=context,
-        )
+        return AIWriteResponse(success=True, content=content, context_used=context)
 
     except httpx.HTTPStatusError as e:
         error_detail = ""
@@ -94,10 +103,12 @@ async def ai_write(novel_id: int, data: AIWriteRequest, db: Session = Depends(ge
 
 @router.post("/preview-context")
 def preview_context(novel_id: int, data: AIWriteRequest, db: Session = Depends(get_db)):
-    """Preview what context will be sent to AI without actually calling the API."""
     novel = db.query(Novel).filter(Novel.id == novel_id).first()
     if not novel:
         raise HTTPException(404, "Novel not found")
+
+    config = db.query(AIConfig).filter(AIConfig.novel_id == novel_id).first()
+    context_budget = (config.context_budget if config else None) or 6000
 
     context = build_writing_context(
         db=db,
@@ -109,6 +120,8 @@ def preview_context(novel_id: int, data: AIWriteRequest, db: Session = Depends(g
         include_world_element_ids=data.include_world_elements,
         prev_chapter_count=data.prev_chapter_count,
         custom_context=data.custom_context,
+        context_budget=context_budget,
     )
 
-    return {"context": context, "char_count": len(context)}
+    from ..context import estimate_tokens
+    return {"context": context, "char_count": len(context), "token_estimate": estimate_tokens(context)}

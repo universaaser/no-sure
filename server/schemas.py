@@ -27,7 +27,6 @@ class NovelOut(BaseModel):
     target_word_count: int
     created_at: datetime
     updated_at: datetime
-
     class Config:
         from_attributes = True
 
@@ -43,6 +42,7 @@ class CharacterCreate(BaseModel):
     goals: str = ""
     arc_summary: str = ""
     speech_style: str = ""
+    summary_brief: str = ""
     tags: list = []
     sort_order: int = 0
 
@@ -56,6 +56,7 @@ class CharacterUpdate(BaseModel):
     goals: Optional[str] = None
     arc_summary: Optional[str] = None
     speech_style: Optional[str] = None
+    summary_brief: Optional[str] = None
     tags: Optional[list] = None
     sort_order: Optional[int] = None
 
@@ -71,11 +72,11 @@ class CharacterOut(BaseModel):
     goals: str
     arc_summary: str
     speech_style: str
+    summary_brief: str
     tags: list
     sort_order: int
     created_at: datetime
     updated_at: datetime
-
     class Config:
         from_attributes = True
 
@@ -93,7 +94,6 @@ class RelationshipOut(BaseModel):
     character_b_id: int
     relationship_type: str
     description: str
-
     class Config:
         from_attributes = True
 
@@ -104,6 +104,7 @@ class WorldElementCreate(BaseModel):
     name: str
     description: str = ""
     details: dict = {}
+    summary_brief: str = ""
     parent_id: Optional[int] = None
     sort_order: int = 0
 
@@ -112,6 +113,7 @@ class WorldElementUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     details: Optional[dict] = None
+    summary_brief: Optional[str] = None
     parent_id: Optional[int] = None
     sort_order: Optional[int] = None
 
@@ -122,11 +124,11 @@ class WorldElementOut(BaseModel):
     name: str
     description: str
     details: dict
+    summary_brief: str
     parent_id: Optional[int]
     sort_order: int
     created_at: datetime
     updated_at: datetime
-
     class Config:
         from_attributes = True
 
@@ -165,7 +167,6 @@ class OutlineNodeOut(BaseModel):
     sort_order: int
     created_at: datetime
     updated_at: datetime
-
     class Config:
         from_attributes = True
 
@@ -201,7 +202,6 @@ class PlotThreadOut(BaseModel):
     resolution_notes: str
     created_at: datetime
     updated_at: datetime
-
     class Config:
         from_attributes = True
 
@@ -232,7 +232,89 @@ class ChapterOut(BaseModel):
     notes: str
     created_at: datetime
     updated_at: datetime
+    class Config:
+        from_attributes = True
 
+
+# ─── Chapter Version ───
+class ChapterVersionOut(BaseModel):
+    id: int
+    chapter_id: int
+    content: str
+    word_count: int
+    version_number: int
+    change_summary: str
+    created_at: datetime
+    class Config:
+        from_attributes = True
+
+
+# ─── Foreshadow ───
+class ForeshadowCreate(BaseModel):
+    title: str
+    description: str = ""
+    planted_chapter_id: Optional[int] = None
+    planted_detail: str = ""
+    expected_resolution: str = ""
+    status: str = "planted"
+    priority: int = 5
+    related_character_ids: list = []
+    notes: str = ""
+
+class ForeshadowUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    planted_chapter_id: Optional[int] = None
+    planted_detail: Optional[str] = None
+    expected_resolution: Optional[str] = None
+    resolve_chapter_id: Optional[int] = None
+    status: Optional[str] = None
+    priority: Optional[int] = None
+    related_character_ids: Optional[list] = None
+    notes: Optional[str] = None
+
+class ForeshadowOut(BaseModel):
+    id: int
+    novel_id: int
+    title: str
+    description: str
+    planted_chapter_id: Optional[int]
+    planted_detail: str
+    expected_resolution: str
+    resolve_chapter_id: Optional[int]
+    status: str
+    priority: int
+    related_character_ids: list
+    notes: str
+    created_at: datetime
+    updated_at: datetime
+    class Config:
+        from_attributes = True
+
+
+# ─── Prompt Template ───
+class PromptTemplateCreate(BaseModel):
+    name: str
+    description: str = ""
+    category: str = "custom"
+    prompt_template: str = ""
+
+class PromptTemplateUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    prompt_template: Optional[str] = None
+
+class PromptTemplateOut(BaseModel):
+    id: int
+    novel_id: int
+    name: str
+    description: str
+    category: str
+    prompt_template: str
+    is_builtin: bool
+    sort_order: int
+    created_at: datetime
     class Config:
         from_attributes = True
 
@@ -247,6 +329,7 @@ class AIConfigCreate(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 4000
     context_strategy: str = "auto"
+    context_budget: int = 6000
 
 class AIConfigUpdate(BaseModel):
     provider: Optional[str] = None
@@ -257,6 +340,7 @@ class AIConfigUpdate(BaseModel):
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
     context_strategy: Optional[str] = None
+    context_budget: Optional[int] = None
 
 class AIConfigOut(BaseModel):
     id: int
@@ -268,7 +352,7 @@ class AIConfigOut(BaseModel):
     temperature: float
     max_tokens: int
     context_strategy: str
-
+    context_budget: int
     class Config:
         from_attributes = True
 
@@ -278,15 +362,30 @@ class AIWriteRequest(BaseModel):
     chapter_id: Optional[int] = None
     outline_node_id: Optional[int] = None
     prompt: str = ""
-    include_characters: list = []  # character ids to include
-    include_plot_threads: list = []  # plot thread ids to include
-    include_world_elements: list = []  # world element ids to include
-    prev_chapter_count: int = 2  # how many previous chapter summaries to include
-    custom_context: str = ""  # additional context from user
+    include_characters: list = []
+    include_plot_threads: list = []
+    include_world_elements: list = []
+    prev_chapter_count: int = 2
+    custom_context: str = ""
 
 
 class AIWriteResponse(BaseModel):
     success: bool
     content: str = ""
     context_used: str = ""
+    error: str = ""
+
+
+# ─── Consistency Check ───
+class ConsistencyIssue(BaseModel):
+    category: str = ""
+    description: str = ""
+    chapter_refs: list = []
+    severity: str = "warning"  # warning, error, info
+
+
+class ConsistencyCheckResponse(BaseModel):
+    success: bool
+    issues: list = []
+    summary: str = ""
     error: str = ""
